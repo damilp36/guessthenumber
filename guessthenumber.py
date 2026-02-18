@@ -4,8 +4,8 @@ from typing import List
 import streamlit.components.v1 as components
 import html
 import time
-import streamlit.components.v1 as components
-import uuid
+
+
 
 
 
@@ -70,60 +70,84 @@ class Player:
     name: str
     secret: int
 
-def voice_number_input():
-    component_id = str(uuid.uuid4()).replace("-", "")
+def voice_number_input(label="🎤 Speak Guess"):
+    """
+    Returns a string number (e.g., "52") or None.
+    Uses browser SpeechRecognition (Chrome/Edge best).
+    """
+    nonce = str(time.time()).replace(".", "")
+    safe_label = html.escape(label)
 
-    result = components.html(
+    value = components.html(
         f"""
-        <div>
-            <button onclick="startRecognition()">🎤 Speak Guess</button>
-            <p id="output"></p>
+        <div style="font-family: sans-serif;">
+          <button id="btn_{nonce}" style="
+              padding:10px 14px; border-radius:10px; border:1px solid #ccc;
+              cursor:pointer; font-size:14px;">
+            {safe_label}
+          </button>
+          <div id="status_{nonce}" style="margin-top:8px; font-size:13px;"></div>
         </div>
 
         <script>
-        const output = document.getElementById("output");
+        (function() {{
+          const btn = document.getElementById("btn_{nonce}");
+          const status = document.getElementById("status_{nonce}");
 
-        function startRecognition() {{
-            if (!('webkitSpeechRecognition' in window)) {{
-                output.innerHTML = "Speech recognition not supported.";
-                return;
+          function setValue(val) {{
+            window.parent.postMessage({{
+              type: "streamlit:setComponentValue",
+              value: val
+            }}, "*");
+          }}
+
+          btn.addEventListener("click", () => {{
+            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SR) {{
+              status.innerText = "Speech recognition not supported in this browser. Use Chrome/Edge.";
+              setValue(null);
+              return;
             }}
 
-            const recognition = new webkitSpeechRecognition();
+            const recognition = new SR();
             recognition.lang = "en-US";
             recognition.interimResults = false;
             recognition.maxAlternatives = 1;
 
+            status.innerText = "🎧 Listening... (allow microphone permission)";
+
+            recognition.onresult = (event) => {{
+              const transcript = event.results[0][0].transcript || "";
+              status.innerText = "You said: " + transcript;
+
+              // Extract first digit group
+              const m = transcript.match(/\\d+/);
+              if (m) {{
+                setValue(m[0]);
+              }} else {{
+                status.innerText += " — No number detected. Try saying digits like 'five two'.";
+                setValue(null);
+              }}
+            }};
+
+            recognition.onerror = (event) => {{
+              status.innerText = "Error: " + event.error;
+              setValue(null);
+            }};
+
+            recognition.onend = () => {{
+              // stops listening
+            }};
+
             recognition.start();
-
-            recognition.onresult = function(event) {{
-                const transcript = event.results[0][0].transcript;
-                output.innerHTML = "You said: " + transcript;
-
-                // Try to extract number
-                const numberMatch = transcript.match(/\\d+/);
-                if (numberMatch) {{
-                    const number = numberMatch[0];
-                    window.parent.postMessage({{
-                        type: "streamlit:setComponentValue",
-                        value: number
-                    }}, "*");
-                }} else {{
-                    output.innerHTML += "<br>No number detected.";
-                }}
-            }};
-
-            recognition.onerror = function(event) {{
-                output.innerHTML = "Error: " + event.error;
-            }};
-        }}
+          }});
+        }})();
         </script>
         """,
-        height=150,
-        key=component_id,
+        height=120,
     )
+    return value
 
-    return result
 
 
 # ----------------------------
@@ -140,6 +164,8 @@ def init_state():
         "last_prompt": "",
         "history": [],             # list of dicts
         "current_guess": 0,        # initialize widget-backed state BEFORE widget is created
+        "voice_guess": None,
+
     }
     for k, v in defaults.items():
         if k not in st.session_state:
@@ -270,7 +296,14 @@ elif st.session_state["phase"] == "playing":
     spoken_number = voice_number_input()
 
     if spoken_number is not None:
-        st.session_state["current_guess"] = int(spoken_number)
+        try:
+            st.session_state["voice_guess"] = int(spoken_number)
+            st.success(f"Captured guess: {st.session_state['voice_guess']}")
+        except ValueError:
+            st.session_state["voice_guess"] = None
+            st.warning("Could not parse the spoken number.")
+
+
 
 
     def submit_guess():
@@ -281,7 +314,10 @@ elif st.session_state["phase"] == "playing":
         guesser_local = players_local[guesser_i]
         target_local = players_local[target_i]
 
-        g = int(st.session_state["current_guess"])
+        g = st.session_state.get("voice_guess")
+        if g is None:
+            g = int(st.session_state["current_guess"])
+        
         secret = target_local.secret
 
         if g == secret:
@@ -306,7 +342,9 @@ elif st.session_state["phase"] == "playing":
             next_target = players_local[st.session_state["target_idx"]].name
             speak(f"{next_guesser}, Please guess the number chosen by {next_target}.")
 
+            st.session_state["voice_guess"] = None
             reset_guess()
+
 
     st.button("📣 Submit guess", on_click=submit_guess)
 
