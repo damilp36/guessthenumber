@@ -286,21 +286,7 @@ elif st.session_state["phase"] == "playing":
     st.subheader("3) Play")
     st.write(f"🎯 **Current turn:** {guesser.name} guesses **{target.name}**'s number")
 
-    voice_number_input_ui()
-
-    st.number_input(
-        "Confirm what you said",
-        min_value=0,
-        max_value=100,
-        step=1,
-        key=voice_number_input_ui(),
-    )
-
-
-    
-
-
-
+    voice_number_input_ui() 
 
 
     def submit_guess():
