@@ -4,6 +4,9 @@ from typing import List
 import streamlit.components.v1 as components
 import html
 import time
+import streamlit.components.v1 as components
+import uuid
+
 
 
 # ----------------------------
@@ -66,6 +69,61 @@ def speak(text: str):
 class Player:
     name: str
     secret: int
+
+def voice_number_input():
+    component_id = str(uuid.uuid4()).replace("-", "")
+
+    result = components.html(
+        f"""
+        <div>
+            <button onclick="startRecognition()">🎤 Speak Guess</button>
+            <p id="output"></p>
+        </div>
+
+        <script>
+        const output = document.getElementById("output");
+
+        function startRecognition() {{
+            if (!('webkitSpeechRecognition' in window)) {{
+                output.innerHTML = "Speech recognition not supported.";
+                return;
+            }}
+
+            const recognition = new webkitSpeechRecognition();
+            recognition.lang = "en-US";
+            recognition.interimResults = false;
+            recognition.maxAlternatives = 1;
+
+            recognition.start();
+
+            recognition.onresult = function(event) {{
+                const transcript = event.results[0][0].transcript;
+                output.innerHTML = "You said: " + transcript;
+
+                // Try to extract number
+                const numberMatch = transcript.match(/\\d+/);
+                if (numberMatch) {{
+                    const number = numberMatch[0];
+                    window.parent.postMessage({{
+                        type: "streamlit:setComponentValue",
+                        value: number
+                    }}, "*");
+                }} else {{
+                    output.innerHTML += "<br>No number detected.";
+                }}
+            }};
+
+            recognition.onerror = function(event) {{
+                output.innerHTML = "Error: " + event.error;
+            }};
+        }}
+        </script>
+        """,
+        height=150,
+        key=component_id,
+    )
+
+    return result
 
 
 # ----------------------------
@@ -209,13 +267,11 @@ elif st.session_state["phase"] == "playing":
     st.subheader("3) Play")
     st.write(f"🎯 **Current turn:** {guesser.name} guesses **{target.name}**'s number")
 
-    st.number_input(
-        f"{guesser.name}, enter your guess (0–100)",
-        min_value=0,
-        max_value=100,
-        step=1,
-        key="current_guess",
-    )
+    spoken_number = voice_number_input()
+
+    if spoken_number is not None:
+        st.session_state["current_guess"] = int(spoken_number)
+
 
     def submit_guess():
         players_local: List[Player] = st.session_state["players"]
