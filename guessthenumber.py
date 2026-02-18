@@ -320,8 +320,6 @@ elif st.session_state["phase"] == "playing":
         guess_int = max(0, min(100, guess_int))
         st.session_state["voice_guess"] = guess_int
         st.success(f"Captured guess: {st.session_state['voice_guess']}")
-    else:
-        st.session_state["voice_guess"] = None
 
     
 
