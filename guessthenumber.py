@@ -300,7 +300,7 @@ if st.session_state["phase"] == "setup_names":
         temp_names.append(name.strip())
 
 
-    if st.button("➡️ Continue to secret number entry", disabled=any(n.strip() == "" for n in temp_names), align="center"):
+    if st.button("➡️ Continue to secret number entry", disabled=any(n.strip() == "" for n in temp_names)):
         if any(n == "" for n in temp_names):
             st.error("Please enter a name for every player.")
         else:
