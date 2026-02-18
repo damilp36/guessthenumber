@@ -185,6 +185,64 @@ init_state()
 st.title("🎙️ Number Guess Game")
 st.caption("Be the smartest guesser! Players take turns guessing each other's secret numbers (0–100) using their voice.")
 
+# ============================
+# 📖 How To Play Section
+# ============================
+with st.expander("📖 How to Play"):
+    st.markdown("""
+### 🎮 Game Overview
+This is a turn-based number guessing game.
+
+Each player chooses a secret number (0–100).  
+Players then take turns guessing each other’s number using voice input.
+
+---
+
+### 🔐 Setup Phase
+1. Enter player names.
+2. Each player enters their secret number.
+3. Pass the device when prompted so others cannot see the number.
+
+---
+
+### 🎤 Playing the Game
+- When it’s your turn:
+  - Click the **🎤 Speak** button.
+  - Say a number clearly.
+- The game captures your guess.
+- Press **Submit Guess**.
+
+---
+
+### 🔊 Feedback
+You will hear:
+- 🔔 A short tone when turns change
+- ❌ A low tone if your guess is wrong
+- 🎉 A victory tone if your guess is correct
+
+You will also hear voice guidance telling you:
+- If your guess is **higher** or **lower**
+- When someone wins
+
+---
+
+### 🏆 Winning
+The first player to guess correctly wins the round.
+
+The scoreboard tracks:
+- Total wins
+- Total attempts
+
+---
+
+### 🔁 After a Round
+You can:
+- Play again (same secrets)
+- Enter new secrets
+- Reset everything
+""")
+
+
 with st.sidebar:
     st.header("Game Controls")
 
@@ -295,7 +353,7 @@ elif st.session_state["phase"] == "secret_entry":
             "Secret number (0–100)",
             type="password",
             key=f"secret_text_{idx}",
-            placeholder="e.g., 42",
+            placeholder="",
         )
 
         st.caption("Tip: Use digits (0–100). This field is masked.")
