@@ -299,26 +299,20 @@ if st.session_state["phase"] == "setup_names":
         name = st.text_input(f"Player {i+1} name", key=f"name_{i}")
         temp_names.append(name.strip())
 
-    c1, c2 = st.columns(2)
-    with c1:
-        if st.button("➡️ Continue to secret entry"):
-            if any(n == "" for n in temp_names):
-                st.error("Please enter a name for every player.")
-            else:
-                st.session_state["player_names"] = temp_names
-                st.session_state["secrets"] = {}
-                st.session_state["secret_entry_idx"] = 0
-                st.session_state["show_pass_screen"] = True
-                ensure_scoreboard(temp_names)
-                reset_round_attempts()
-                st.session_state["phase"] = "secret_entry"
-                speak("Secret entry mode. Pass the device to player one.")
-                play_sound("turn")
-                st.rerun()
-    with c2:
-        if st.button("🧹 Clear inputs"):
-            for i in range(int(st.session_state["num_players"])):
-                st.session_state[f"name_{i}"] = ""
+
+    if st.button("➡️ Continue to secret entry"):
+        if any(n == "" for n in temp_names):
+            st.error("Please enter a name for every player.")
+        else:
+            st.session_state["player_names"] = temp_names
+            st.session_state["secrets"] = {}
+            st.session_state["secret_entry_idx"] = 0
+            st.session_state["show_pass_screen"] = True
+            ensure_scoreboard(temp_names)
+            reset_round_attempts()
+            st.session_state["phase"] = "secret_entry"
+            speak("Secret entry mode. Pass the device to player one.")
+            play_sound("turn")
             st.rerun()
 
 
