@@ -288,6 +288,15 @@ elif st.session_state["phase"] == "playing":
 
     voice_number_input_ui() 
 
+    st.number_input(
+    "Enter guess (confirm what you said)",
+    min_value=0,
+    max_value=100,
+    step=1,
+    key="current_guess",
+)
+
+
 
     def submit_guess():
         players_local: List[Player] = st.session_state["players"]
@@ -297,9 +306,8 @@ elif st.session_state["phase"] == "playing":
         guesser_local = players_local[guesser_i]
         target_local = players_local[target_i]
 
-        g = st.session_state.get("voice_guess")
-        if g is None:
-            g = int(st.session_state["current_guess"])
+        g = int(st.session_state["current_guess"])
+
         
         secret = target_local.secret
 
