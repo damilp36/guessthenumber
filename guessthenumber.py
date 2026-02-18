@@ -1,45 +1,22 @@
 import streamlit as st
 from dataclasses import dataclass
-from typing import List
+from typing import List, Dict
 import streamlit.components.v1 as components
 import html
 import time
+
 from voice_guess_component import voice_guess
 
 
-
-import re
-
-def to_int_or_none(x):
-    """Best-effort parse of an int from various component return types."""
-    if x is None:
-        return None
-
-    # If Streamlit ever returns non-string (rare), stringify it safely
-    s = str(x).strip()
-
-    # Find first integer in the string
-    m = re.search(r"\d+", s)
-    if not m:
-        return None
-
-    try:
-        return int(m.group(0))
-    except Exception:
-        return None
-
-
-
-# ----------------------------
-# Number prompt helper
-# ----------------------------
+# ============================
+# Browser helpers (TTS + SFX)
+# ============================
 def speak(text: str):
-    # Always show in UI
+    """Browser TTS (client-side). Always mirrors prompt in sidebar."""
     st.session_state["last_prompt"] = text
 
-    # Browser TTS (client-side)
     safe = html.escape(text)
-    nonce = str(time.time()).replace(".", "")  # forces re-run even if same text
+    nonce = str(time.time()).replace(".", "")
 
     components.html(
         f"""
@@ -47,20 +24,14 @@ def speak(text: str):
         <script>
         (function() {{
             const text = "{safe}";
-            if (!('speechSynthesis' in window)) {{
-                console.log("Web Speech API not supported in this browser.");
-                return;
-            }}
+            if (!('speechSynthesis' in window)) return;
 
-            // Cancel anything currently speaking
             window.speechSynthesis.cancel();
-
             const u = new SpeechSynthesisUtterance(text);
-            u.rate = 1.0;   // 0.1 to 10
-            u.pitch = 1.0;  // 0 to 2
-            u.volume = 1.0; // 0 to 1
+            u.rate = 1.0;
+            u.pitch = 1.0;
+            u.volume = 1.0;
 
-            // Pick an English voice if available (optional)
             const pickVoice = () => {{
                 const voices = window.speechSynthesis.getVoices() || [];
                 const preferred =
@@ -71,13 +42,9 @@ def speak(text: str):
                 window.speechSynthesis.speak(u);
             }};
 
-            // Some browsers load voices async
             const voices = window.speechSynthesis.getVoices();
-            if (voices && voices.length) {{
-                pickVoice();
-            }} else {{
-                window.speechSynthesis.onvoiceschanged = pickVoice;
-            }}
+            if (voices && voices.length) pickVoice();
+            else window.speechSynthesis.onvoiceschanged = pickVoice;
         }})();
         </script>
         """,
@@ -85,82 +52,93 @@ def speak(text: str):
     )
 
 
+def play_sound(kind: str):
+    """
+    Lightweight browser sound effects via WebAudio.
+    kind: "success", "fail", "turn"
+    """
+    nonce = str(time.time()).replace(".", "")
+    safe_kind = html.escape(kind)
 
+    components.html(
+        f"""
+        <div id="sfx_{nonce}"></div>
+        <script>
+        (function() {{
+          const kind = "{safe_kind}";
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (!AudioContext) return;
+
+          const ctx = new AudioContext();
+
+          function beep(freq, durMs, type="sine", gain=0.12) {{
+            const osc = ctx.createOscillator();
+            const g = ctx.createGain();
+            osc.type = type;
+            osc.frequency.value = freq;
+            g.gain.value = gain;
+            osc.connect(g);
+            g.connect(ctx.destination);
+            osc.start();
+            setTimeout(() => {{ osc.stop(); }}, durMs);
+          }}
+
+          // Patterns
+          if (kind === "turn") {{
+            beep(880, 90, "sine", 0.10);
+          }} else if (kind === "success") {{
+            beep(660, 120, "sine", 0.12);
+            setTimeout(() => beep(990, 140, "sine", 0.12), 140);
+          }} else if (kind === "fail") {{
+            beep(180, 220, "sawtooth", 0.10);
+          }}
+        }})();
+        </script>
+        """,
+        height=0,
+    )
+
+
+# ============================
+# Data model
+# ============================
 @dataclass
 class Player:
     name: str
     secret: int
 
-def voice_number_input_ui(label="🎤 Speak Guess"):
-    nonce = str(time.time()).replace(".", "")
-    safe_label = html.escape(label)
 
-    components.html(
-        f"""
-        <div style="font-family: sans-serif;">
-          <button id="btn_{nonce}" style="
-              padding:10px 14px; border-radius:10px; border:1px solid #ccc;
-              cursor:pointer; font-size:14px;">
-            {safe_label}
-          </button>
-          <div id="status_{nonce}" style="margin-top:8px; font-size:13px;"></div>
-        </div>
-
-        <script>
-        (function() {{
-          const btn = document.getElementById("btn_{nonce}");
-          const status = document.getElementById("status_{nonce}");
-
-          btn.addEventListener("click", () => {{
-            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (!SR) {{
-              status.innerText = "Speech recognition not supported in this browser. Use Chrome/Edge.";
-              return;
-            }}
-
-            const recognition = new SR();
-            recognition.lang = "en-US";
-            recognition.interimResults = false;
-            recognition.maxAlternatives = 1;
-
-            status.innerText = "🎧 Listening...";
-
-            recognition.onresult = (event) => {{
-              const transcript = event.results[0][0].transcript || "";
-              status.innerText = "You said: " + transcript + " (now type the number below to confirm)";
-            }};
-
-            recognition.onerror = (event) => {{
-              status.innerText = "Error: " + event.error;
-            }};
-
-            recognition.start();
-          }});
-        }})();
-        </script>
-        """,
-        height=120,
-    )
-
-
-
-
-# ----------------------------
-# Session state init
-# ----------------------------
+# ============================
+# Session state
+# ============================
 def init_state():
     defaults = {
-        "phase": "setup",          # setup -> locked -> playing -> finished
+        # Phases:
+        # setup_names -> secret_entry -> locked -> playing -> finished
+        "phase": "setup_names",
         "num_players": 2,
-        "players": [],             # List[Player]
-        "turn_idx": 0,
-        "target_idx": 1,           # player being guessed
-        "winner": None,
-        "last_prompt": "",
-        "history": [],             # list of dicts
-        "current_guess": 0,        # initialize widget-backed state BEFORE widget is created
-        "voice_guess": None,
 
+        "player_names": [],          # list[str]
+        "secrets": {},               # Dict[str, int] name -> secret
+        "players": [],               # List[Player]
+
+        "secret_entry_idx": 0,       # which player is entering secret now
+        "show_pass_screen": True,    # show pass-device screen between secret entries
+
+        "turn_idx": 0,
+        "target_idx": 1,
+        "winner": None,
+
+        "last_prompt": "",
+        "history": [],               # list[dict]
+
+        # Scoreboard
+        "scoreboard": {},            # name -> {"wins":int,"attempts":int}
+        "round_attempts": {},        # name -> attempts in current round
+
+        # Gameplay
+        "current_guess": None,       # last captured guess int
+        "last_captured_guess": None, # display convenience
     }
     for k, v in defaults.items():
         if k not in st.session_state:
@@ -174,39 +152,79 @@ def reset_game(keep_num_players: bool = True):
     st.session_state["num_players"] = num_players
 
 
+def build_players_from_state():
+    names = st.session_state["player_names"]
+    secrets = st.session_state["secrets"]
+    st.session_state["players"] = [Player(n, int(secrets[n])) for n in names]
+
+
 def next_turn():
     n = len(st.session_state["players"])
     st.session_state["turn_idx"] = (st.session_state["turn_idx"] + 1) % n
     st.session_state["target_idx"] = (st.session_state["turn_idx"] + 1) % n
 
 
-def reset_guess():
-    # safe to call in callbacks
-    st.session_state["current_guess"] = 0
+def ensure_scoreboard(names: List[str]):
+    sb = st.session_state["scoreboard"]
+    for n in names:
+        if n not in sb:
+            sb[n] = {"wins": 0, "attempts": 0}
+    st.session_state["scoreboard"] = sb
 
 
-# ----------------------------
+def reset_round_attempts():
+    st.session_state["round_attempts"] = {n: 0 for n in st.session_state["player_names"]}
+
+
+# ============================
 # UI
-# ----------------------------
-st.set_page_config(page_title="Number Guess Game", page_icon="🎙️", layout="centered")
+# ============================
+st.set_page_config(page_title="Voice Guess Game", page_icon="🎙️", layout="centered")
 init_state()
 
-st.title("Number Guess Game")   
-st.caption("Players choose secret numbers (0–100). Take turns guessing. Voice prompts guide you!")
+st.title("🎙️ Voice Guess Game")
+st.caption("Hidden secrets + voice guesses + sound effects + scoreboard")
 
 with st.sidebar:
     st.header("Game Controls")
-    if st.button("🔄 Reset game"):
-        reset_game()
+
+    if st.button("🔄 Reset everything"):
+        reset_game(keep_num_players=False)
+        st.rerun()
+
+    if st.button("🔁 Reset round (keep scoreboard)"):
+        # Keep scoreboard but restart round setup
+        st.session_state["phase"] = "setup_names"
+        st.session_state["player_names"] = []
+        st.session_state["secrets"] = {}
+        st.session_state["players"] = []
+        st.session_state["secret_entry_idx"] = 0
+        st.session_state["show_pass_screen"] = True
+        st.session_state["history"] = []
+        st.session_state["winner"] = None
+        st.session_state["current_guess"] = None
+        st.session_state["last_captured_guess"] = None
+        st.rerun()
 
     st.markdown("---")
-    st.write("**Action:**")
+    st.write("**Last prompt:**")
     st.info(st.session_state.get("last_prompt", "") or "No prompt yet.")
 
-# ----------------------------
-# Phase: Setup
-# ----------------------------
-if st.session_state["phase"] == "setup":
+    st.markdown("---")
+    if st.session_state.get("scoreboard"):
+        st.write("**🏆 Scoreboard**")
+        sb_rows = []
+        for name, stats in st.session_state["scoreboard"].items():
+            sb_rows.append(
+                {"Player": name, "Wins": stats["wins"], "Total Attempts": stats["attempts"]}
+            )
+        st.dataframe(sb_rows, use_container_width=True, hide_index=True)
+
+
+# ============================
+# Phase: Setup names
+# ============================
+if st.session_state["phase"] == "setup_names":
     st.subheader("1) Setup players")
 
     st.session_state["num_players"] = st.number_input(
@@ -217,46 +235,119 @@ if st.session_state["phase"] == "setup":
         step=1,
     )
 
-    st.write("Each player enters a **name** and a **secret number** (0–100).")
-    st.warning("For a real 'secret' experience, have each player take turns entering while others look away.")
+    st.write("Enter **player names** first. Secrets will be entered privately next (hidden secret entry mode).")
 
     temp_names = []
-    temp_secrets = []
+    for i in range(int(st.session_state["num_players"])):
+        name = st.text_input(f"Player {i+1} name", key=f"name_{i}")
+        temp_names.append(name.strip())
 
-    for i in range(st.session_state["num_players"]):
-        with st.expander(f"Player {i+1}", expanded=(i < 2)):
-            name = st.text_input(f"Name (Player {i+1})", key=f"name_{i}")
-            secret = st.number_input(
-                f"Secret number (Player {i+1})",
-                min_value=0,
-                max_value=100,
-                value=0,
-                step=1,
-                key=f"secret_{i}",
-            )
-            temp_names.append(name.strip())
-            temp_secrets.append(int(secret))
-
-    col1, col2 = st.columns(2)
-    with col1:
-        lock = st.button("✅ Lock in secrets")
-    with col2:
+    c1, c2 = st.columns(2)
+    with c1:
+        if st.button("➡️ Continue to secret entry"):
+            if any(n == "" for n in temp_names):
+                st.error("Please enter a name for every player.")
+            else:
+                st.session_state["player_names"] = temp_names
+                st.session_state["secrets"] = {}
+                st.session_state["secret_entry_idx"] = 0
+                st.session_state["show_pass_screen"] = True
+                ensure_scoreboard(temp_names)
+                reset_round_attempts()
+                st.session_state["phase"] = "secret_entry"
+                speak("Secret entry mode. Pass the device to player one.")
+                play_sound("turn")
+                st.rerun()
+    with c2:
         st.button("🧹 Clear", on_click=reset_game)
 
-    if lock:
-        if any(n == "" for n in temp_names):
-            st.error("Please enter a name for every player.")
-        else:
-            st.session_state["players"] = [Player(n, s) for n, s in zip(temp_names, temp_secrets)]
-            st.session_state["phase"] = "locked"
-            st.success("Secrets locked. Ready to start!")
 
-# ----------------------------
+# ============================
+# Phase: Secret entry (Hidden mode)
+# ============================
+elif st.session_state["phase"] == "secret_entry":
+    names = st.session_state["player_names"]
+    idx = st.session_state["secret_entry_idx"]
+
+    if idx >= len(names):
+        # all done
+        build_players_from_state()
+        st.session_state["phase"] = "locked"
+        speak("All secrets locked. Ready to start.")
+        st.rerun()
+
+    current_name = names[idx]
+
+    st.subheader("2) Hidden secret entry mode 🔐")
+
+    # Pass-device screen (prevents shoulder-surfing)
+    if st.session_state["show_pass_screen"]:
+        st.warning(f"Pass the device to **{current_name}**. Others should look away.")
+        if st.button("✅ I'm ready (start secret entry)"):
+            st.session_state["show_pass_screen"] = False
+            play_sound("turn")
+            st.rerun()
+    else:
+        st.info(f"**{current_name}**, enter your secret number privately.")
+
+        # Masked input (password) for secret
+        secret_text = st.text_input(
+            "Secret number (0–100)",
+            type="password",
+            key=f"secret_text_{idx}",
+            placeholder="e.g., 42",
+        )
+
+        st.caption("Tip: Use digits (0–100). This field is masked.")
+
+        c1, c2 = st.columns(2)
+        with c1:
+            if st.button("🔒 Save secret & pass device"):
+                try:
+                    secret_val = int(secret_text.strip())
+                except Exception:
+                    st.error("Please enter a valid integer between 0 and 100.")
+                    st.stop()
+
+                if not (0 <= secret_val <= 100):
+                    st.error("Secret must be between 0 and 100.")
+                    st.stop()
+
+                st.session_state["secrets"][current_name] = secret_val
+                st.session_state["secret_entry_idx"] = idx + 1
+                st.session_state["show_pass_screen"] = True
+
+                next_name = names[idx + 1] if (idx + 1) < len(names) else None
+                if next_name:
+                    speak(f"Secret saved. Pass the device to {next_name}.")
+                else:
+                    speak("Secret saved. All secrets entered.")
+
+                play_sound("turn")
+                st.rerun()
+
+        with c2:
+            if st.button("↩️ Back to names"):
+                st.session_state["phase"] = "setup_names"
+                st.rerun()
+
+        # Progress
+        st.markdown("---")
+        st.write("**Progress**")
+        st.progress(min(1.0, (idx / max(1, len(names)))))
+
+        # Don’t display actual secrets
+        st.write("Secrets entered so far:")
+        entered = list(st.session_state["secrets"].keys())
+        st.write(", ".join(entered) if entered else "None yet")
+
+
+# ============================
 # Phase: Locked -> Start
-# ----------------------------
+# ============================
 elif st.session_state["phase"] == "locked":
-    st.subheader("2) Start game")
-    st.write("Players are ready:")
+    st.subheader("3) Start game")
+    st.write("Players:")
     for p in st.session_state["players"]:
         st.write(f"• **{p.name}**")
 
@@ -266,38 +357,39 @@ elif st.session_state["phase"] == "locked":
         st.session_state["target_idx"] = 1 % len(st.session_state["players"])
         st.session_state["winner"] = None
         st.session_state["history"] = []
-        reset_guess()
+        st.session_state["current_guess"] = None
+        st.session_state["last_captured_guess"] = None
+        reset_round_attempts()
 
         guesser = st.session_state["players"][st.session_state["turn_idx"]].name
         target = st.session_state["players"][st.session_state["target_idx"]].name
-        speak(f"{guesser}, Please guess the number chosen by {target}.")
+        speak(f"{guesser}, it's your turn. Guess {target}'s number.")
+        play_sound("turn")
         st.rerun()
 
-# ----------------------------
+
+# ============================
 # Phase: Playing
-# ----------------------------
+# ============================
 elif st.session_state["phase"] == "playing":
     players: List[Player] = st.session_state["players"]
+    guesser = players[st.session_state["turn_idx"]]
+    target = players[st.session_state["target_idx"]]
 
-    guesser_idx = st.session_state["turn_idx"]
-    target_idx = st.session_state["target_idx"]
-
-    guesser = players[guesser_idx]
-    target = players[target_idx]
-
-    st.subheader("3) Play")
+    st.subheader("4) Play")
     st.write(f"🎯 **Current turn:** {guesser.name} guesses **{target.name}**'s number")
 
+    # Voice component (force remount each turn so button stays responsive)
     round_key = f"voice_guess_{st.session_state['turn_idx']}_{len(st.session_state['history'])}"
-    g = voice_guess(label="🎤 Speak Guess", lang="en-US", key=round_key)
+    captured = voice_guess(label="🎤 Speak your guess", lang="en-US", key=round_key)
 
+    if captured is not None:
+        st.session_state["current_guess"] = captured
+        st.session_state["last_captured_guess"] = captured
+        st.success(f"Captured guess: {captured}")
 
-    if g is not None:
-        st.session_state["current_guess"] = g
-        st.success(f"Voice guess captured: {g}")
-
-
-
+    if st.session_state.get("last_captured_guess") is not None:
+        st.caption(f"Last captured: **{st.session_state['last_captured_guess']}**")
 
     def submit_guess():
         players_local: List[Player] = st.session_state["players"]
@@ -307,70 +399,137 @@ elif st.session_state["phase"] == "playing":
         guesser_local = players_local[guesser_i]
         target_local = players_local[target_i]
 
-        g = int(st.session_state["current_guess"])
+        g = st.session_state.get("current_guess")
+        if g is None:
+            speak("No voice guess captured yet. Click the microphone and speak a number.")
+            play_sound("fail")
+            return
 
-        
-        secret = target_local.secret
+        g = int(g)
+        secret = int(target_local.secret)
+
+        # Scoreboard: attempts
+        st.session_state["scoreboard"][guesser_local.name]["attempts"] += 1
+        st.session_state["round_attempts"][guesser_local.name] += 1
 
         if g == secret:
             st.session_state["winner"] = guesser_local.name
             st.session_state["phase"] = "finished"
             st.session_state["history"].append(
-                {"guesser": guesser_local.name, "target": target_local.name, "guess": g, "result": "CORRECT"}
+                {
+                    "guesser": guesser_local.name,
+                    "target": target_local.name,
+                    "guess": g,
+                    "result": "CORRECT",
+                }
             )
-            speak(f"Correct! {guesser_local.name} wins! The number chosen by {target_local.name} was {secret}.")
+            st.session_state["scoreboard"][guesser_local.name]["wins"] += 1
+
+            speak(
+                f"Correct! {guesser_local.name} wins! "
+                f"{target_local.name}'s number was {secret}."
+            )
+            play_sound("success")
             return
         else:
             hint = "lower" if g > secret else "higher"
             st.session_state["history"].append(
-                {"guesser": guesser_local.name, "target": target_local.name, "guess": g, "result": hint.upper()}
+                {
+                    "guesser": guesser_local.name,
+                    "target": target_local.name,
+                    "guess": g,
+                    "result": hint.upper(),
+                }
             )
 
-            speak(f"{guesser_local.name}, your guess is {hint} than the number chosen by {target_local.name}.")
+            speak(f"{guesser_local.name}, your guess is {hint} than {target_local.name}'s number.")
+            play_sound("fail")
 
-            # Next player's turn
+            # Advance turn
             next_turn()
             next_guesser = players_local[st.session_state["turn_idx"]].name
             next_target = players_local[st.session_state["target_idx"]].name
-            speak(f"{next_guesser}, Please guess the number chosen by {next_target}.")
+            speak(f"{next_guesser}, it's your turn. Guess {next_target}'s number.")
+            play_sound("turn")
 
-            st.session_state["voice_guess"] = None
-            reset_guess()
-
+            # Clear guess for next player
+            st.session_state["current_guess"] = None
+            st.session_state["last_captured_guess"] = None
 
     st.button("📣 Submit guess", on_click=submit_guess)
 
+    # History
     if st.session_state["history"]:
         st.markdown("---")
         st.write("### 📜 Guess history")
-        st.dataframe(st.session_state["history"], use_container_width=True)
+        st.dataframe(st.session_state["history"], use_container_width=True, hide_index=True)
 
-# ----------------------------
+    # Round scoreboard view
+    st.markdown("---")
+    st.write("### 📊 Round attempts")
+    ra = [{"Player": n, "Attempts": a} for n, a in st.session_state["round_attempts"].items()]
+    st.dataframe(ra, use_container_width=True, hide_index=True)
+
+
+# ============================
 # Phase: Finished
-# ----------------------------
+# ============================
 elif st.session_state["phase"] == "finished":
     st.subheader("🏁 Game over")
     st.success(f"🏆 Winner: **{st.session_state['winner']}**")
 
+    # Final guess history
     if st.session_state["history"]:
         st.write("### 📜 Final guess history")
-        st.dataframe(st.session_state["history"], use_container_width=True)
+        st.dataframe(st.session_state["history"], use_container_width=True, hide_index=True)
 
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("🔁 Play again (same players)"):
+    st.markdown("---")
+    st.write("### 📊 Scoreboard")
+    sb_rows = []
+    for name, stats in st.session_state["scoreboard"].items():
+        sb_rows.append({"Player": name, "Wins": stats["wins"], "Total Attempts": stats["attempts"]})
+    st.dataframe(sb_rows, use_container_width=True, hide_index=True)
+
+    st.write("### 🧮 Attempts this round")
+    ra = [{"Player": n, "Attempts": a} for n, a in st.session_state["round_attempts"].items()]
+    st.dataframe(ra, use_container_width=True, hide_index=True)
+
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        if st.button("🔁 Play again (same players & secrets)"):
             st.session_state["phase"] = "playing"
             st.session_state["turn_idx"] = 0
             st.session_state["target_idx"] = 1 % len(st.session_state["players"])
             st.session_state["winner"] = None
             st.session_state["history"] = []
-            reset_guess()
+            st.session_state["current_guess"] = None
+            st.session_state["last_captured_guess"] = None
+            reset_round_attempts()
 
-            speak(
-                f"{st.session_state['players'][0].name}, Please guess the number chosen by {st.session_state['players'][1].name}."
-            )
+            p0 = st.session_state["players"][0].name
+            p1 = st.session_state["players"][1].name
+            speak(f"{p0}, it's your turn. Guess {p1}'s number.")
+            play_sound("turn")
             st.rerun()
-    with col2:
+
+    with c2:
+        if st.button("🔐 New secrets (same names)"):
+            st.session_state["phase"] = "secret_entry"
+            st.session_state["secrets"] = {}
+            st.session_state["players"] = []
+            st.session_state["secret_entry_idx"] = 0
+            st.session_state["show_pass_screen"] = True
+            st.session_state["history"] = []
+            st.session_state["winner"] = None
+            st.session_state["current_guess"] = None
+            st.session_state["last_captured_guess"] = None
+            reset_round_attempts()
+
+            speak("New secret entry mode. Pass the device to player one.")
+            play_sound("turn")
+            st.rerun()
+
+    with c3:
         if st.button("🧑‍🤝‍🧑 New players"):
             reset_game(keep_num_players=False)
             st.rerun()
