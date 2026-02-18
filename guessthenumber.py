@@ -234,7 +234,7 @@ elif st.session_state["phase"] == "playing":
             st.session_state["history"].append(
                 {"guesser": guesser_local.name, "target": target_local.name, "guess": g, "result": "CORRECT"}
             )
-            speak(f"Correct! {guesser_local.name} wins! {target_local.name}'s number was {secret}.")
+            speak(f"Correct! {guesser_local.name} wins! The number chosen by {target_local.name} was {secret}.")
             return
         else:
             hint = "lower" if g > secret else "higher"
@@ -242,13 +242,13 @@ elif st.session_state["phase"] == "playing":
                 {"guesser": guesser_local.name, "target": target_local.name, "guess": g, "result": hint.upper()}
             )
 
-            speak(f"{guesser_local.name}, your guess is {hint} than {target_local.name}'s number.")
+            speak(f"{guesser_local.name}, your guess is {hint} than the number chosen by {target_local.name}.")
 
             # Next player's turn
             next_turn()
             next_guesser = players_local[st.session_state["turn_idx"]].name
             next_target = players_local[st.session_state["target_idx"]].name
-            speak(f"{next_guesser}, it's your turn. Guess {next_target}'s number.")
+            speak(f"{next_guesser}, it's your turn. Guess the number chosen by {next_target}.")
 
             reset_guess()
 
@@ -282,7 +282,7 @@ elif st.session_state["phase"] == "finished":
 
             speak(
                 f"{st.session_state['players'][0].name}, it's your turn. "
-                f"Guess {st.session_state['players'][1].name}'s number."
+                f"Guess the number chosen by {st.session_state['players'][1].name}."
             )
             st.rerun()
     with col2:
