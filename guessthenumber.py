@@ -237,8 +237,7 @@ The scoreboard tracks:
 
 ### 🔁 After a Round
 You can:
-- Play again (same secrets)
-- Enter new secrets
+- Play again with new numbers (keep same players)
 - Reset everything
 """)
 
@@ -552,25 +551,8 @@ elif st.session_state["phase"] == "finished":
     ra = [{"Player": n, "Attempts": a} for n, a in st.session_state["round_attempts"].items()]
     st.dataframe(ra, use_container_width=True, hide_index=True)
 
-    c1, c2, c3 = st.columns(3)
+    c1, c2 = st.columns(2)
     with c1:
-        if st.button("🔁 Play again (same players & secrets)"):
-            st.session_state["phase"] = "playing"
-            st.session_state["turn_idx"] = 0
-            st.session_state["target_idx"] = 1 % len(st.session_state["players"])
-            st.session_state["winner"] = None
-            st.session_state["history"] = []
-            st.session_state["current_guess"] = None
-            st.session_state["last_captured_guess"] = None
-            reset_round_attempts()
-
-            p0 = st.session_state["players"][0].name
-            p1 = st.session_state["players"][1].name
-            speak(f"{p0}, it's your turn. Guess {p1}'s number.")
-            play_sound("turn")
-            st.rerun()
-
-    with c2:
         if st.button("🔐 New secrets (same names)"):
             st.session_state["phase"] = "secret_entry"
             st.session_state["secrets"] = {}
@@ -587,7 +569,7 @@ elif st.session_state["phase"] == "finished":
             play_sound("turn")
             st.rerun()
 
-    with c3:
+    with c2:
         if st.button("🧑‍🤝‍🧑 New players"):
             reset_game(keep_num_players=False)
             st.rerun()
