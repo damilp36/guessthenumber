@@ -316,7 +316,12 @@ if st.session_state["phase"] == "setup_names":
                 play_sound("turn")
                 st.rerun()
     with c2:
-        st.button("🧹 Clear", on_click=reset_game)
+        if st.button("🧹 Clear inputs"):
+            for i in range(int(st.session_state["num_players"])):
+                st.session_state[f"name_{i}"] = ""
+            st.rerun()
+
+
 
 
 # ============================
