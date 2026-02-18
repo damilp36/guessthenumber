@@ -191,7 +191,7 @@ elif st.session_state["phase"] == "locked":
 
         guesser = st.session_state["players"][st.session_state["turn_idx"]].name
         target = st.session_state["players"][st.session_state["target_idx"]].name
-        speak(f"{guesser}, it's your turn. Guess {target}'s number.")
+        speak(f"{guesser}, it's your turn. Guess the number chosen by {target}.")
         st.rerun()
 
 # ----------------------------
