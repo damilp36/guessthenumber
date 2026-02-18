@@ -359,7 +359,7 @@ elif st.session_state["phase"] == "secret_entry":
 
         c1, c2 = st.columns(2)
         with c1:
-            if st.button("🔒 Save secret & pass device"):
+            if st.button("🔒 Save number & pass device"):
                 try:
                     secret_val = int(secret_text.strip())
                 except Exception:
