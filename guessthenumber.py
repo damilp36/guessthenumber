@@ -4,6 +4,8 @@ from typing import List
 import streamlit.components.v1 as components
 import html
 import time
+from voice_guess_component import voice_guess
+
 
 
 import re
@@ -286,15 +288,12 @@ elif st.session_state["phase"] == "playing":
     st.subheader("3) Play")
     st.write(f"🎯 **Current turn:** {guesser.name} guesses **{target.name}**'s number")
 
-    voice_number_input_ui() 
+    g = voice_guess(label="🎤 Speak Guess", lang="en-US", key="voice_guess_widget")
 
-    st.number_input(
-    "Enter guess (confirm what you said)",
-    min_value=0,
-    max_value=100,
-    step=1,
-    key="current_guess",
-)
+    if g is not None:
+        st.session_state["current_guess"] = g
+        st.success(f"Voice guess captured: {g}")
+
 
 
 
