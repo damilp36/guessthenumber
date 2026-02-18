@@ -5,7 +5,8 @@ import streamlit.components.v1 as components
 import html
 import time
 
-
+from streamlit_js_eval import streamlit_js_eval
+import streamlit as st
 import re
 
 def to_int_or_none(x):
@@ -301,6 +302,9 @@ elif st.session_state["phase"] == "locked":
 # Phase: Playing
 # ----------------------------
 elif st.session_state["phase"] == "playing":
+    from streamlit_js_eval import streamlit_js_eval
+    import re
+
     players: List[Player] = st.session_state["players"]
 
     guesser_idx = st.session_state["turn_idx"]
@@ -312,17 +316,66 @@ elif st.session_state["phase"] == "playing":
     st.subheader("3) Play")
     st.write(f"🎯 **Current turn:** {guesser.name} guesses **{target.name}**'s number")
 
-    spoken_number = voice_number_input()
-
-    guess_int = to_int_or_none(spoken_number)
-    if guess_int is not None:
-        # clamp to 0–100
-        guess_int = max(0, min(100, guess_int))
-        st.session_state["voice_guess"] = guess_int
-        st.success(f"Captured guess: {st.session_state['voice_guess']}")
-        st.number_input("Type guess (fallback)", min_value=0, max_value=100, step=1, key="current_guess")
-    else:
+    # --- Ensure keys exist ---
+    if "voice_guess" not in st.session_state:
         st.session_state["voice_guess"] = None
+    if "current_guess" not in st.session_state:
+        st.session_state["current_guess"] = 0
+
+    def listen_for_number():
+        """
+        Runs browser speech recognition and returns the transcript to Python,
+        then extracts the first integer found. Returns int or None.
+        """
+        transcript = streamlit_js_eval(
+            js_expressions="""
+            new Promise((resolve) => {
+              const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+              if (!SR) { resolve(null); return; }
+
+              const rec = new SR();
+              rec.lang = 'en-US';
+              rec.interimResults = false;
+              rec.maxAlternatives = 1;
+
+              rec.onresult = (e) => resolve(e.results[0][0].transcript);
+              rec.onerror = () => resolve(null);
+              rec.start();
+            })
+            """,
+            key=f"speech_recognition_{time.time()}",
+            want_output=True,
+        )
+
+        if transcript is None:
+            return None
+
+        m = re.search(r"\d+", str(transcript))
+        if not m:
+            return None
+
+        try:
+            return int(m.group(0))
+        except Exception:
+            return None
+
+    colA, colB = st.columns([1, 1])
+
+    with colA:
+        if st.button("🎤 Speak guess"):
+            num = listen_for_number()
+            if num is None:
+                st.session_state["voice_guess"] = None
+                st.warning("No number detected. Try saying digits like 'five two' or '52'.")
+            else:
+                num = max(0, min(100, num))
+                st.session_state["voice_guess"] = num
+                st.session_state["current_guess"] = num
+                st.success(f"Captured guess: {num}")
+
+    with colB:
+        st.number_input("Type guess (fallback)", min_value=0, max_value=100, step=1, key="current_guess")
+
 
     
 
