@@ -225,7 +225,7 @@ with st.sidebar:
 # Phase: Setup names
 # ============================
 if st.session_state["phase"] == "setup_names":
-    st.subheader("1) Setup players")
+    st.subheader("Setup players")
 
     st.session_state["num_players"] = st.number_input(
         "Number of players",
@@ -278,7 +278,7 @@ elif st.session_state["phase"] == "secret_entry":
 
     current_name = names[idx]
 
-    st.subheader("2) Hidden secret entry mode 🔐")
+    st.subheader("Enter secret number")
 
     # Pass-device screen (prevents shoulder-surfing)
     if st.session_state["show_pass_screen"]:
@@ -346,7 +346,7 @@ elif st.session_state["phase"] == "secret_entry":
 # Phase: Locked -> Start
 # ============================
 elif st.session_state["phase"] == "locked":
-    st.subheader("3) Start game")
+    st.subheader("Start game")
     st.write("Players:")
     for p in st.session_state["players"]:
         st.write(f"• **{p.name}**")
@@ -376,7 +376,7 @@ elif st.session_state["phase"] == "playing":
     guesser = players[st.session_state["turn_idx"]]
     target = players[st.session_state["target_idx"]]
 
-    st.subheader("4) Play")
+    st.subheader("Play")
     st.write(f"🎯 **Current turn:** {guesser.name} guesses **{target.name}**'s number")
 
     # Voice component (force remount each turn so button stays responsive)
