@@ -320,7 +320,6 @@ elif st.session_state["phase"] == "playing":
         guess_int = max(0, min(100, guess_int))
         st.session_state["voice_guess"] = guess_int
         st.success(f"Captured guess: {st.session_state['voice_guess']}")
-        st.number_input("Type guess (fallback)", min_value=0, max_value=100, step=1, key="current_guess")
     else:
         st.session_state["voice_guess"] = None
 
@@ -341,7 +340,6 @@ elif st.session_state["phase"] == "playing":
         g = st.session_state.get("voice_guess")
         if g is None:
             g = int(st.session_state["current_guess"])
-
         
         secret = target_local.secret
 
