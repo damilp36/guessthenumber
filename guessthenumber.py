@@ -420,7 +420,7 @@ elif st.session_state["phase"] == "locked":
 
         guesser = st.session_state["players"][st.session_state["turn_idx"]].name
         target = st.session_state["players"][st.session_state["target_idx"]].name
-        speak(f"{guesser}, it's your turn. Guess {target}'s number.")
+        speak(f"{guesser}, Please guess the number chosen by {target}.")
         play_sound("turn")
         st.rerun()
 
@@ -484,12 +484,12 @@ elif st.session_state["phase"] == "playing":
 
             speak(
                 f"Correct! {guesser_local.name} wins! "
-                f"{target_local.name}'s number was {secret}."
+                f"The number chosen by {target_local.name} was {secret}."
             )
             play_sound("success")
             return
         else:
-            hint = "lower" if g > secret else "higher"
+            hint = "higher" if g > secret else "lower"
             st.session_state["history"].append(
                 {
                     "guesser": guesser_local.name,
@@ -499,14 +499,14 @@ elif st.session_state["phase"] == "playing":
                 }
             )
 
-            speak(f"{guesser_local.name}, your guess is {hint} than {target_local.name}'s number.")
+            speak(f"{guesser_local.name}, your guess is {hint} than the number chosen by {target_local.name}.")
             play_sound("fail")
 
             # Advance turn
             next_turn()
             next_guesser = players_local[st.session_state["turn_idx"]].name
             next_target = players_local[st.session_state["target_idx"]].name
-            speak(f"{next_guesser}, it's your turn. Guess {next_target}'s number.")
+            speak(f"{next_guesser}, Please guess the number chosen by {next_target}.")
             play_sound("turn")
 
             # Clear guess for next player
