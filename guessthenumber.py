@@ -183,7 +183,7 @@ st.set_page_config(page_title="Number Guess Game", page_icon="🎙️", layout="
 init_state()
 
 st.title("🎙️ Number Guess Game")
-st.caption("Be the smartest guesser! Players take turns guessing each other's secret numbers (0–100) using their voice. May the best ear win!")
+st.caption("Be the smartest guesser! Players take turns guessing each other's secret numbers (0–100) using their voice.")
 
 with st.sidebar:
     st.header("Game Controls")
