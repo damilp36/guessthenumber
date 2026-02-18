@@ -330,7 +330,7 @@ elif st.session_state["phase"] == "secret_entry":
         # all done
         build_players_from_state()
         st.session_state["phase"] = "locked"
-        speak("All secrets locked. Ready to start.")
+        speak("All numbers locked. Ready to start.")
         st.rerun()
 
     current_name = names[idx]
@@ -340,7 +340,7 @@ elif st.session_state["phase"] == "secret_entry":
     # Pass-device screen (prevents shoulder-surfing)
     if st.session_state["show_pass_screen"]:
         st.warning(f"Pass the device to **{current_name}**. Others should look away.")
-        if st.button("✅ I'm ready (start secret entry)"):
+        if st.button("✅ I'm ready (start number entry)"):
             st.session_state["show_pass_screen"] = False
             play_sound("turn")
             st.rerun()
