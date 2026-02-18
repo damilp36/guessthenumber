@@ -248,7 +248,7 @@ elif st.session_state["phase"] == "playing":
             next_turn()
             next_guesser = players_local[st.session_state["turn_idx"]].name
             next_target = players_local[st.session_state["target_idx"]].name
-            speak(f"{next_guesser}, it's your turn. Guess the number chosen by {next_target}.")
+            speak(f"{next_guesser}, Please guess the number chosen by {next_target}.")
 
             reset_guess()
 
@@ -281,8 +281,7 @@ elif st.session_state["phase"] == "finished":
             reset_guess()
 
             speak(
-                f"{st.session_state['players'][0].name}, it's your turn. "
-                f"Guess the number chosen by {st.session_state['players'][1].name}."
+                f"{st.session_state['players'][0].name}, Please guess the number chosen by {st.session_state['players'][1].name}."
             )
             st.rerun()
     with col2:
