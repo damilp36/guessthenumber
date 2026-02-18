@@ -289,11 +289,11 @@ elif st.session_state["phase"] == "playing":
     voice_number_input_ui()
 
     st.number_input(
-        "Enter guess (confirm what you said)",
+        "Confirm what you said",
         min_value=0,
         max_value=100,
         step=1,
-        key="current_guess",
+        key=voice_number_input_ui(),
     )
 
 
