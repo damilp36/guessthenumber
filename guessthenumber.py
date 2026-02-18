@@ -179,11 +179,11 @@ def reset_round_attempts():
 # ============================
 # UI
 # ============================
-st.set_page_config(page_title="Voice Guess Game", page_icon="🎙️", layout="centered")
+st.set_page_config(page_title="Number Guess Game", page_icon="🎙️", layout="centered")
 init_state()
 
-st.title("🎙️ Voice Guess Game")
-st.caption("Hidden secrets + voice guesses + sound effects + scoreboard")
+st.title("🎙️ Number Guess Game")
+st.caption("Be the smartest guesser! Players take turns guessing each other's secret numbers (0–100) using their voice. May the best ear win!")
 
 with st.sidebar:
     st.header("Game Controls")
