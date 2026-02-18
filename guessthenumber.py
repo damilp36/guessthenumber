@@ -188,9 +188,9 @@ st.caption("Be the smartest guesser! Players take turns guessing each other's se
 # ============================
 # 📖 How To Play Section
 # ============================
-with st.expander("📖 How to Play"):
+with st.expander("How to Play"):
     st.markdown("""
-### 🎮 Game Overview
+### Game Overview
 This is a turn-based number guessing game.
 
 Each player chooses a secret number (0–100).  
@@ -198,14 +198,14 @@ Players then take turns guessing each other’s number using voice input.
 
 ---
 
-### 🔐 Setup Phase
+### Setup Phase
 1. Enter player names.
 2. Each player enters their secret number.
 3. Pass the device when prompted so others cannot see the number.
 
 ---
 
-### 🎤 Playing the Game
+### Playing the Game
 - When it’s your turn:
   - Click the **🎤 Speak** button.
   - Say a number clearly.
@@ -226,7 +226,7 @@ You will also hear voice guidance telling you:
 
 ---
 
-### 🏆 Winning
+### Winning
 The first player to guess correctly wins the round.
 
 The scoreboard tracks:
@@ -235,7 +235,7 @@ The scoreboard tracks:
 
 ---
 
-### 🔁 After a Round
+### After a Round
 You can:
 - Play again with new numbers (keep same players)
 - Reset everything
