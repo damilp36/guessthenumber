@@ -6,6 +6,25 @@ import html
 import time
 
 
+import re
+
+def to_int_or_none(x):
+    """Best-effort parse of an int from various component return types."""
+    if x is None:
+        return None
+
+    # If Streamlit ever returns non-string (rare), stringify it safely
+    s = str(x).strip()
+
+    # Find first integer in the string
+    m = re.search(r"\d+", s)
+    if not m:
+        return None
+
+    try:
+        return int(m.group(0))
+    except Exception:
+        return None
 
 
 
@@ -295,13 +314,18 @@ elif st.session_state["phase"] == "playing":
 
     spoken_number = voice_number_input()
 
-    if spoken_number is not None:
-        try:
-            st.session_state["voice_guess"] = int(spoken_number)
-            st.success(f"Captured guess: {st.session_state['voice_guess']}")
-        except ValueError:
-            st.session_state["voice_guess"] = None
-            st.warning("Could not parse the spoken number.")
+    guess_int = to_int_or_none(spoken_number)
+    if guess_int is not None:
+        # clamp to 0–100
+        guess_int = max(0, min(100, guess_int))
+        st.session_state["voice_guess"] = guess_int
+        st.success(f"Captured guess: {st.session_state['voice_guess']}")
+        st.number_input("Type guess (fallback)", min_value=0, max_value=100, step=1, key="current_guess")
+    else:
+        st.session_state["voice_guess"] = None
+
+    
+
 
 
 
@@ -317,6 +341,7 @@ elif st.session_state["phase"] == "playing":
         g = st.session_state.get("voice_guess")
         if g is None:
             g = int(st.session_state["current_guess"])
+
         
         secret = target_local.secret
 
