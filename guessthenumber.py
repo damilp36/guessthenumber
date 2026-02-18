@@ -89,15 +89,11 @@ class Player:
     name: str
     secret: int
 
-def voice_number_input(label="🎤 Speak Guess"):
-    """
-    Returns a string number (e.g., "52") or None.
-    Uses browser SpeechRecognition (Chrome/Edge best).
-    """
+def voice_number_input_ui(label="🎤 Speak Guess"):
     nonce = str(time.time()).replace(".", "")
     safe_label = html.escape(label)
 
-    value = components.html(
+    components.html(
         f"""
         <div style="font-family: sans-serif;">
           <button id="btn_{nonce}" style="
@@ -113,18 +109,10 @@ def voice_number_input(label="🎤 Speak Guess"):
           const btn = document.getElementById("btn_{nonce}");
           const status = document.getElementById("status_{nonce}");
 
-          function setValue(val) {{
-            window.parent.postMessage({{
-              type: "streamlit:setComponentValue",
-              value: val
-            }}, "*");
-          }}
-
           btn.addEventListener("click", () => {{
             const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
             if (!SR) {{
               status.innerText = "Speech recognition not supported in this browser. Use Chrome/Edge.";
-              setValue(null);
               return;
             }}
 
@@ -133,29 +121,15 @@ def voice_number_input(label="🎤 Speak Guess"):
             recognition.interimResults = false;
             recognition.maxAlternatives = 1;
 
-            status.innerText = "🎧 Listening... (allow microphone permission)";
+            status.innerText = "🎧 Listening...";
 
             recognition.onresult = (event) => {{
               const transcript = event.results[0][0].transcript || "";
-              status.innerText = "You said: " + transcript;
-
-              // Extract first digit group
-              const m = transcript.match(/\\d+/);
-              if (m) {{
-                setValue(m[0]);
-              }} else {{
-                status.innerText += " — No number detected. Try saying digits like 'five two'.";
-                setValue(null);
-              }}
+              status.innerText = "You said: " + transcript + " (now type the number below to confirm)";
             }};
 
             recognition.onerror = (event) => {{
               status.innerText = "Error: " + event.error;
-              setValue(null);
-            }};
-
-            recognition.onend = () => {{
-              // stops listening
             }};
 
             recognition.start();
@@ -165,7 +139,7 @@ def voice_number_input(label="🎤 Speak Guess"):
         """,
         height=120,
     )
-    return value
+
 
 
 
@@ -312,14 +286,16 @@ elif st.session_state["phase"] == "playing":
     st.subheader("3) Play")
     st.write(f"🎯 **Current turn:** {guesser.name} guesses **{target.name}**'s number")
 
-    spoken_number = voice_number_input()
+    voice_number_input_ui()
 
-    guess_int = to_int_or_none(spoken_number)
-    if guess_int is not None:
-        # clamp to 0–100
-        guess_int = max(0, min(100, guess_int))
-        st.session_state["voice_guess"] = guess_int
-        st.success(f"Captured guess: {st.session_state['voice_guess']}")
+    st.number_input(
+        "Enter guess (confirm what you said)",
+        min_value=0,
+        max_value=100,
+        step=1,
+        key="current_guess",
+    )
+
 
     
 
