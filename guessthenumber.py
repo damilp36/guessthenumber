@@ -288,7 +288,9 @@ elif st.session_state["phase"] == "playing":
     st.subheader("3) Play")
     st.write(f"🎯 **Current turn:** {guesser.name} guesses **{target.name}**'s number")
 
-    g = voice_guess(label="🎤 Speak Guess", lang="en-US", key="voice_guess_widget")
+    round_key = f"voice_guess_{st.session_state['turn_idx']}_{len(st.session_state['history'])}"
+    g = voice_guess(label="🎤 Speak Guess", lang="en-US", key=round_key)
+
 
     if g is not None:
         st.session_state["current_guess"] = g

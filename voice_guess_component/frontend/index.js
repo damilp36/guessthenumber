@@ -12,6 +12,9 @@ function supportsSpeechRecognition() {
   return !!(window.SpeechRecognition || window.webkitSpeechRecognition);
 }
 
+let currentRecognition = null;
+
+
 // Convert basic number words up to 100 ("fifty two", "twenty one", etc.)
 function wordsToNumber(s) {
   s = (s || "").toLowerCase().replace(/-/g, " ").trim();
@@ -59,13 +62,28 @@ function wordsToNumber(s) {
 
 function startListening(lang) {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  // If a previous recognition session exists, abort it first
+  if (currentRecognition) {
+    try { currentRecognition.abort(); } catch (e) {}
+    currentRecognition = null;
+  }
+
   const recognition = new SR();
+  currentRecognition = recognition;
 
   recognition.lang = lang || "en-US";
   recognition.interimResults = false;
   recognition.maxAlternatives = 1;
+  recognition.continuous = false;
 
+  btn.disabled = true;
   setStatus("🎧 Listening... (allow microphone permission)");
+
+  const finish = () => {
+    btn.disabled = false;
+    currentRecognition = null;
+  };
 
   recognition.onresult = (event) => {
     const transcript = (event.results?.[0]?.[0]?.transcript || "").trim();
@@ -76,21 +94,40 @@ function startListening(lang) {
     if (n === null || Number.isNaN(n)) {
       setStatus(`Could not detect a number from: "${transcript}"`);
       Streamlit.setComponentValue(null);
+      try { recognition.stop(); } catch (e) {}
+      finish();
       return;
     }
 
     const clamped = Math.max(0, Math.min(100, n));
     setStatus(`✅ Captured: ${clamped}`);
     Streamlit.setComponentValue(clamped);
+
+    // Stop & release the recognizer so the next click works
+    try { recognition.stop(); } catch (e) {}
+    finish();
   };
 
   recognition.onerror = (event) => {
     setStatus(`Error: ${event.error || "unknown error"}`);
     Streamlit.setComponentValue(null);
+    finish();
   };
 
-  recognition.start();
+  recognition.onend = () => {
+    // Fires when recognition ends naturally
+    finish();
+  };
+
+  try {
+    recognition.start();
+  } catch (e) {
+    // Some browsers throw if start() is called too quickly
+    setStatus("Could not start microphone. Try again.");
+    finish();
+  }
 }
+
 
 function onRender(event) {
   const args = event.detail.args || {};
