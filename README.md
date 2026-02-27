@@ -1,8 +1,8 @@
-# 🎙️ Voice Guess Game (Streamlit)
+# 🎙️ Voice Guess Game (Streamlit + Custom Voice Component)
 
-An interactive multi‑player number guessing game built with Streamlit.
+An interactive multi-player number guessing game built with **Streamlit** and a custom **browser voice recognition component**.
 
-Players choose secret numbers and take turns guessing each other’s numbers while receiving real‑time voice prompts directly in the browser.
+Players choose secret numbers and take turns guessing each other’s numbers using real voice input — no typing required.
 
 ---
 
@@ -10,8 +10,10 @@ Players choose secret numbers and take turns guessing each other’s numbers whi
 
 * 🎮 Supports 2 to 8 players
 * 🔢 Custom secret number selection (0–100)
-* 🔄 Turn‑based gameplay
-* 🔊 Browser‑based voice prompts (Web Speech API)
+* 🔄 Turn-based gameplay
+* 🎤 Real voice input (SpeechRecognition API)
+* 🔊 Real voice prompts (SpeechSynthesis API)
+* 🧠 Converts spoken words ("fifty two") to numbers (52)
 * 📜 Guess history tracking
 * 🏆 Automatic winner detection
 * 🔁 Replay with same players or new setup
@@ -27,10 +29,14 @@ Players choose secret numbers and take turns guessing each other’s numbers whi
    * Secret number (0–100)
 3. Click **Lock in secrets**
 4. Click **Start**
-5. Players take turns guessing
-6. Voice prompt announces:
+5. Players take turns speaking their guess
+6. The browser:
 
-   * Whose turn it is
+   * Captures microphone input
+   * Converts spoken number to integer
+   * Sends it to Streamlit
+7. Voice prompt announces:
+
    * Whether guess is higher or lower
    * When someone wins
 
@@ -38,22 +44,53 @@ Game continues until a player guesses correctly.
 
 ---
 
-## 🛠️ Installation (Local Run)
+# 🛠️ Local Installation
 
-### 1️⃣ Clone the repository
+## 1️⃣ Clone the repository
 
 ```
 git clone <your-repo-url>
 cd <repo-folder>
 ```
 
-### 2️⃣ Install dependencies
+---
+
+## 2️⃣ Install Python dependencies
 
 ```
 pip install -r requirements.txt
 ```
 
-### 3️⃣ Run the app
+---
+
+## 3️⃣ Install Frontend Dependencies (Custom Component)
+
+Navigate to the frontend directory:
+
+```
+cd voice_guess_component/frontend
+npm install
+```
+
+Then build the component:
+
+```
+npm run build
+```
+
+This generates:
+
+```
+voice_guess_component/frontend/dist/
+```
+
+⚠️ You must build the frontend before running the app.
+
+---
+
+## 4️⃣ Run the App
+
+From the root project folder:
 
 ```
 streamlit run guessthenumber.py
@@ -61,58 +98,103 @@ streamlit run guessthenumber.py
 
 ---
 
-## 📦 requirements.txt
+# 📦 requirements.txt
 
 ```
 streamlit>=1.30.0
 ```
 
-No external voice libraries required.
-Voice is handled by the browser using the Web Speech API.
+No external Python voice libraries required. Voice processing is handled entirely in the browser.
 
 ---
 
-## 🌐 Deployment (Streamlit Community Cloud)
+# 🎤 Voice System Architecture
 
-1. Push these files to GitHub:
+This app uses two browser APIs:
 
-   * `guessthenumber.py`
-   * `requirements.txt`
-2. Go to [https://share.streamlit.io/](https://share.streamlit.io/)
-3. Select your repository
-4. Choose the main file (`guessthenumber.py`)
-5. Deploy
+### 🔊 SpeechSynthesis API
 
----
+Used for voice prompts (text-to-speech).
 
-## 🔊 Voice Notes
+### 🎙️ SpeechRecognition API
 
-The app uses browser‑based speech synthesis.
+Used for:
 
-For best experience:
+* Capturing microphone input
+* Converting speech to text
+* Extracting numeric values
+* Returning the number to Python via a custom Streamlit component
 
-* Use Google Chrome
-* Ensure tab is not muted
-* Interact with page (click) before expecting audio
+The custom component frontend is bundled using Vite.
 
 ---
 
-## 🎯 Future Enhancements (Ideas)
+# 🌐 Browser Compatibility
+
+Best experience:
+
+* ✅ Google Chrome
+* ✅ Microsoft Edge
+
+Not fully supported:
+
+* ⚠️ Safari (partial support)
+* ❌ Firefox (no SpeechRecognition API)
+
+Microphone permission must be allowed.
+
+---
+
+# ☁️ Deployment Notes
+
+If deploying to Streamlit Community Cloud:
+
+1. Push the entire repository including:
+
+   * `voice_guess_component/`
+   * The built `dist/` folder
+2. Make sure `frontend/dist` is committed to GitHub
+3. Only `streamlit` is required in `requirements.txt`
+
+No Node.js installation is required on Streamlit Cloud if the `dist` folder is already built and committed.
+
+---
+
+# 📁 Project Structure
+
+```
+.
+├── guessthenumber.py
+├── requirements.txt
+└── voice_guess_component/
+    ├── __init__.py
+    └── frontend/
+        ├── package.json
+        ├── vite.config.js
+        ├── index.html
+        ├── index.js
+        └── dist/
+```
+
+---
+
+# 🎯 Future Enhancements
 
 * 🔐 Hidden secret entry mode
-* 🎵 Sound effects for correct / wrong guesses
+* 🎵 Sound effects for correct / incorrect guesses
 * 📊 Scoreboard system
-* 🎨 Enhanced game‑style UI
-* 📱 Mobile‑optimized layout
+* 🎨 Enhanced animated game UI
+* 🤖 AI voice personality modes
+* 📱 Mobile optimization
 
 ---
 
-## 🏁 License
+# 🏁 License
 
-Open for learning and experimentation.
+Open for learning, experimentation, and extension.
 
-Feel free to fork, modify, and enhance.
+Feel free to fork, improve, and build upon it.
 
 ---
 
-Built with ❤️ using Streamlit.
+Built with ❤️ using Streamlit and a custom voice component.
